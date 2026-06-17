@@ -10,7 +10,10 @@ public:
     ~Ucore(); 
 
     void evaluate() override;
+    void startup() override;
 
+    //stopsim()是gem5退出仿真的函数
+    void stopsim();
     int pc;
 
 };

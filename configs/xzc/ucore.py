@@ -37,12 +37,15 @@ import m5
 
 # import all of the SimObjects
 from m5.objects import *
-
+# 创建时钟域
+clk = SrcClockDomain()
+clk.clock = "1GHz"
+clk.voltage_domain = VoltageDomain()
 # set up the root SimObject and start the simulation
 root = Root(full_system=False)
 
 # Create an instantiation of the simobject you created
-root.ucore = Ucore()
+root.ucore = Ucore(clk_domain=clk)
 
 # instantiate all of the objects we've created above
 m5.instantiate()
