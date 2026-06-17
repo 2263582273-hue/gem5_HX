@@ -1,0 +1,5 @@
+Import('*')
+SimObject('Ucore.py', sim_objects=['Ucore'])
+Source('Ucore.cc')
+
+DebugFlag('Ucore')
