@@ -7,9 +7,14 @@
 namespace gem5 {
 
 Ucore::Ucore(const UcoreParams &p):
-TickedObject(p) {
+    TickedObject(p),
+    cacheLineSize(p.cacheLineSize),
+    NumThread(p.ThreadNum),
+    fetchInfo(p.ThreadNum),
+    icacheport(p.name+ ".icache_port", *this, 0) {
     pc=0;
-}
+    
+    }
 
 Ucore::~Ucore() {
 
@@ -32,5 +37,13 @@ void Ucore::evaluate() {
 
 void Ucore::stopsim() {
     exitSimLoop("Simulation complete!");
+}
+
+bool Ucore::recvTimingResp(PacketPtr pkt) {
+    return true;    
+}
+
+void Ucore::recvReqRetry() {
+    
 }
 }
