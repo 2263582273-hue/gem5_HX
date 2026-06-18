@@ -1,3 +1,6 @@
+#ifndef __HX_UCORE__
+#define __HX_UCORE__
+
 #include "base/types.hh"
 #include "cpu/minor/fetch1.hh"
 #include "mem/port.hh"
@@ -82,3 +85,5 @@ protected:
     void recvReqRetry();
 };
 }
+
+#endif
