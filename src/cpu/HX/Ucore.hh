@@ -7,6 +7,7 @@
 #include "sim/ticked_object.hh"
 #include "params/Ucore.hh"
 #include <vector>
+#include "MEM/Ibuffer.hh"
 
 namespace gem5 {
 
@@ -83,7 +84,10 @@ protected:
     Icacheport icacheport;
     bool recvTimingResp(PacketPtr pkt);
     void recvReqRetry();
+protected:
+    Ibuffer ibuffer;
 };
+
 }
 
 #endif
