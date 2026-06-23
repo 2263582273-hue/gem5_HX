@@ -1,7 +1,6 @@
 #ifndef __CPU_HX_UCORE_HH__
 #define __CPU_HX_UCORE_HH__
 
-#include "cpu/HX/MEM/Ibuffer.hh"
 #include "cpu/base.hh"
 #include "cpu/simple_thread.hh"
 #include "mem/port.hh"
@@ -11,37 +10,30 @@
 namespace gem5
 {
 
-/** Fetch-only CPU: functional address translation plus timing Ibuffer access. */
+/** Minimal fetch-only CPU. It does not decode or execute instructions yet. */
 class Ucore : public BaseCPU, public Ticked
 {
   private:
-    class DataPort : public RequestPort
+    class CpuPort : public RequestPort
     {
       public:
-        explicit DataPort(const std::string &name) : RequestPort(name) {}
+        explicit CpuPort(const std::string &name) : RequestPort(name) {}
 
       protected:
-        bool recvTimingResp(PacketPtr pkt) override
-        {
-            delete pkt;
-            return true;
-        }
+        bool recvTimingResp(PacketPtr pkt) override;
         void recvReqRetry() override {}
     };
 
     SimpleThread *thread;
-    DataPort dataPort;
-    Ibuffer ibuffer;
+    CpuPort instPort;
+    CpuPort dataPort;
 
     Addr currentPC = 0;
     const unsigned fetchCount;
-    const Addr ibufferLineSize;
     unsigned fetchedCount = 0;
 
-    Addr translateInstAddr(Addr vaddr);
-
   protected:
-    Port &getInstPort() override { return ibuffer.getPort(); }
+    Port &getInstPort() override { return instPort; }
     Port &getDataPort() override { return dataPort; }
 
   public:

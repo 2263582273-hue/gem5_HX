@@ -12,7 +12,5 @@ class Ucore(BaseCPU, RiscvCPU):
     mmu = RiscvMMU()
 
     fetch_count = Param.Unsigned(
-        10, "Number of 4-byte machine-code words to fetch before exiting"
+        8, "Number of 4-byte machine-code words to fetch before exiting"
     )
-
-    cacheLineSize = Param.Unsigned(32, "Ibuffer cache-line size in bytes")

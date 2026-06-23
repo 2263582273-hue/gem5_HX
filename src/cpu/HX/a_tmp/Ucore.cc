@@ -5,21 +5,27 @@
 
 #include "base/logging.hh"
 #include "debug/Ucore.hh"
-#include "mem/request.hh"
-#include "sim/faults.hh"
+#include "mem/se_translating_port_proxy.hh"
 #include "sim/sim_exit.hh"
 
 namespace gem5
 {
 
+bool
+Ucore::CpuPort::recvTimingResp(PacketPtr pkt)
+{
+    // Functional fetches do not use this path yet. Keep valid BaseCPU ports.
+    delete pkt;
+    return true;
+}
+
 Ucore::Ucore(const UcoreParams &p)
     : BaseCPU(p),
       Ticked(*this, &baseStats.numCycles),
       thread(nullptr),
+      instPort(name() + ".icache_port"),
       dataPort(name() + ".dcache_port"),
-      ibuffer(*this, p.cacheLineSize),
-      fetchCount(p.fetch_count),
-      ibufferLineSize(p.cacheLineSize)
+      fetchCount(p.fetch_count)
 {
     fatal_if(FullSystem, "Ucore currently supports SE mode only");
     fatal_if(numThreads != 1, "Ucore currently supports one thread only");
@@ -90,62 +96,30 @@ Ucore::unserializeThread(CheckpointIn &cp, ThreadID tid)
     thread->unserialize(cp);
 }
 
-Addr
-Ucore::translateInstAddr(Addr vaddr)
-{
-    RequestPtr req = std::make_shared<Request>();
-    req->setContext(thread->contextId());
-    req->setVirt(
-        vaddr, sizeof(uint32_t), Request::INST_FETCH,
-        instRequestorId(), vaddr);
-
-    Fault fault = thread->mmu->translateFunctional(
-        req, thread->getTC(), BaseMMU::Execute);
-    fatal_if(fault != NoFault,
-             "Ucore instruction address translation failed at %#x: %s",
-             vaddr, fault->name());
-    fatal_if(!req->hasPaddr(),
-             "Ucore translation did not produce a physical address");
-
-    return req->getPaddr();
-}
-
 void
 Ucore::evaluate()
 {
     constexpr unsigned FetchSize = sizeof(uint32_t);
+    uint8_t bytes[FetchSize] = {};
 
-    // Translation is functional: it changes no timing and returns immediately.
-    const Addr physical_pc = translateInstAddr(currentPC);
-    const auto line = ibuffer.fetchIbuffer(physical_pc);
+    SETranslatingPortProxy proxy(
+        thread->getTC(), SETranslatingPortProxy::Never);
+    proxy.readBlob(currentPC, bytes, FetchSize);
 
-    // A miss returns an invalid line. evaluate() will retry on the next cycle.
-    if (!line.valid) {
-        DPRINTF(Ucore,
-                "Ibuffer miss or line fill pending: vPC=%#x pPC=%#x\n",
-                currentPC, physical_pc);
-        return;
-    }
+    uint32_t machineCode = 0;
+    std::memcpy(&machineCode, bytes, sizeof(machineCode));
 
-    const Addr line_offset = physical_pc - line.lineAddr;
-    fatal_if(line_offset + FetchSize > ibufferLineSize,
-             "Ucore instruction crosses an Ibuffer cache line");
-
-    uint32_t machine_code = 0;
-    std::memcpy(&machine_code, line.inst + line_offset, FetchSize);
-
-    inform("Ucore fetch[%u]: vPC=%#x pPC=%#x machine_code=%#010x",
-           fetchedCount, currentPC, physical_pc, machine_code);
-    DPRINTF(Ucore,
-            "fetch[%u] vPC=%#x pPC=%#x machine_code=%#010x\n",
-            fetchedCount, currentPC, physical_pc, machine_code);
+    inform("Ucore fetch[%u]: PC=%#x machine_code=%#010x",
+           fetchedCount, currentPC, machineCode);
+    DPRINTF(Ucore, "fetch[%u] PC=%#x machine_code=%#010x\n",
+            fetchedCount, currentPC, machineCode);
 
     currentPC += FetchSize;
     ++fetchedCount;
 
     if (fetchedCount >= fetchCount) {
         stop();
-        exitSimLoop("Ucore finished fetching 10 machine-code words");
+        exitSimLoop("Ucore finished fetching ELF machine code");
     }
 }
 

@@ -21,9 +21,8 @@ system.mem_mode = "timing"
 system.mem_ranges = [AddrRange("512MiB")]
 system.membus = SystemXBar()
 
-system.cpu = Ucore(fetch_count=10)
+system.cpu = Ucore(fetch_count=8)
 system.cpu.createInterruptController()
-# No cache is instantiated: the Ibuffer port reaches DDR through this XBar.
 system.cpu.connectBus(system.membus)
 
 system.mem_ctrl = MemCtrl()
