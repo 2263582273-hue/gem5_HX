@@ -20,7 +20,8 @@ Ucore::Ucore(const UcoreParams &p)
       ibuffer(*this, p.cacheLineSize),
       fetchCount(p.fetch_count),
       ibufferLineSize(p.cacheLineSize),
-      fetchSize(p.fetchSize)
+      fetchSize(p.fetchSize),
+      num_thread(p.num_thread)
 {
     fatal_if(FullSystem, "Ucore currently supports SE mode only");
     fatal_if(numThreads != 1, "Ucore currently supports one thread only");

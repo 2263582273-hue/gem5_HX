@@ -16,5 +16,6 @@ class Ucore(BaseCPU, RiscvCPU):
     )
     #cacheLineSize是cache里的行宽度，fetchSize是指令宽度，两者的单位都是字节byte
     #cacheLineSize应该是fetchSize的整数倍
-    cacheLineSize = Param.Unsigned(16, "Ibuffer cache-line size in bytes")
+    cacheLineSize = Param.Unsigned(16*8, "Ibuffer cache-line size in bytes")
     fetchSize = Param.Unsigned(16, "fetchsize in bytes")
+    num_thread = Param.Unsigned(16, "线程数量")

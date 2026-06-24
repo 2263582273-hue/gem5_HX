@@ -7,6 +7,8 @@
 #include "mem/port.hh"
 #include "params/Ucore.hh"
 #include "sim/ticked_object.hh"
+#include <cstdint>
+#include "data.hh"
 
 namespace gem5
 {
@@ -39,6 +41,9 @@ class Ucore : public BaseCPU, public Ticked
     const Addr fetchSize;
     unsigned fetchedCount = 0;
 
+    //线程数量
+    const unsigned num_thread;
+    //地址翻译（暂时使用）
     Addr translateInstAddr(Addr vaddr);
 
   protected:
@@ -62,6 +67,12 @@ class Ucore : public BaseCPU, public Ticked
 
     Counter totalInsts() const override { return 0; }
     Counter totalOps() const override { return 0; }
+  
+    /*来自Ibuffer的输入*/
+  public:
+    bool ins_vld;
+    Inst ins_data;
+
 };
 
 } // namespace gem5

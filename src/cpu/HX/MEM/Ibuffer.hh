@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include <string>
-
+#include "cpu/HX/data.hh"
 #include "base/types.hh"
 #include "mem/packet.hh"
 #include "mem/port.hh"
@@ -67,6 +67,13 @@ class Ibuffer
 
     bool recvTimingResp(PacketPtr pkt);
     void recvReqRetry();
+
+  //来自Ucore的输入
+  public:
+    bool pc_vld;
+    
+
+
 };
 
 } // namespace gem5
