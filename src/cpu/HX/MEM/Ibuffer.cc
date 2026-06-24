@@ -1,10 +1,12 @@
 #include "cpu/HX/MEM/Ibuffer.hh"
 
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 #include "cpu/HX/Ucore.hh"
 #include "base/intmath.hh"
 #include "base/logging.hh"
-#include "cpu/HX/Ucore.hh"
+#include "debug/Ibuffer.hh"
 #include "mem/request.hh"
 
 namespace gem5
@@ -29,8 +31,11 @@ Ibuffer::~Ibuffer()
 Ibuffer::Ibuffercacheline
 Ibuffer::fetchIbuffer(Addr paddr)
 {
-    const Addr line_addr = paddr & ~(cacheLineSize - 1);
+    // // Align paddr down to the containing cache-line base address.
+    // const Addr line_addr = paddr & ~(cacheLineSize - 1);
 
+    /*这里认为pc的地址和cacheline的行地址永远是对齐的*/
+    const Addr line_addr = paddr ;
     if (line0.valid && line0.lineAddr == line_addr)
         return line0;
     if (line1.valid && line1.lineAddr == line_addr)
@@ -72,6 +77,19 @@ Ibuffer::recvTimingResp(PacketPtr pkt)
     line.lineAddr = outstandingLineAddr;
     line.valid = true;
 
+    std::ostringstream data;
+    const uint8_t *pkt_data = pkt->getConstPtr<uint8_t>();
+    for (Addr i = 0; i < cacheLineSize; ++i) {
+        if (i != 0)
+            data << ' ';
+        data << std::hex << std::setw(2) << std::setfill('0')
+             << static_cast<unsigned>(pkt_data[i]);
+    }
+
+    DPRINTF(Ibuffer,
+            "received cache line: addr=%#x size=%u slot=line%u data=%s\n",
+            line.lineAddr, static_cast<unsigned>(cacheLineSize),
+            (line_number & 1) ? 1 : 0, data.str());
     delete pkt;
     requestOutstanding = false;
     return true;

@@ -36,6 +36,7 @@ class Ucore : public BaseCPU, public Ticked
     Addr currentPC = 0;
     const unsigned fetchCount;
     const Addr ibufferLineSize;
+    const Addr fetchSize;
     unsigned fetchedCount = 0;
 
     Addr translateInstAddr(Addr vaddr);

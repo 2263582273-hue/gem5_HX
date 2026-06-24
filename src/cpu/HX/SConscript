@@ -4,3 +4,4 @@ Source('Ucore.cc')
 Source('MEM/Ibuffer.cc')
 
 DebugFlag('Ucore')
+DebugFlag('Ibuffer')

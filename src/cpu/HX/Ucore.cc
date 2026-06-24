@@ -19,7 +19,8 @@ Ucore::Ucore(const UcoreParams &p)
       dataPort(name() + ".dcache_port"),
       ibuffer(*this, p.cacheLineSize),
       fetchCount(p.fetch_count),
-      ibufferLineSize(p.cacheLineSize)
+      ibufferLineSize(p.cacheLineSize),
+      fetchSize(p.fetchSize)
 {
     fatal_if(FullSystem, "Ucore currently supports SE mode only");
     fatal_if(numThreads != 1, "Ucore currently supports one thread only");
@@ -113,7 +114,6 @@ Ucore::translateInstAddr(Addr vaddr)
 void
 Ucore::evaluate()
 {
-    constexpr unsigned FetchSize = sizeof(uint32_t);
 
     // Translation is functional: it changes no timing and returns immediately.
     const Addr physical_pc = translateInstAddr(currentPC);
@@ -128,21 +128,30 @@ Ucore::evaluate()
     }
 
     const Addr line_offset = physical_pc - line.lineAddr;
-    fatal_if(line_offset + FetchSize > ibufferLineSize,
+    fatal_if(line_offset + fetchSize > ibufferLineSize,
              "Ucore instruction crosses an Ibuffer cache line");
 
-    uint32_t machine_code = 0;
-    std::memcpy(&machine_code, line.inst + line_offset, FetchSize);
+    uint8_t *machine_code = new uint8_t[fetchSize];
+    std::memcpy(machine_code, line.inst + line_offset, fetchSize);
 
-    inform("Ucore fetch[%u]: vPC=%#x pPC=%#x machine_code=%#010x",
-           fetchedCount, currentPC, physical_pc, machine_code);
+    std::ostringstream code;
+    for (Addr i = 0; i < fetchSize; ++i) {
+        if (i != 0)
+            code << ' ';
+        code << std::hex << std::setw(2) << std::setfill('0')
+            << static_cast<unsigned>(machine_code[i]);
+    }
+
+    const std::string code_str = code.str();
     DPRINTF(Ucore,
-            "fetch[%u] vPC=%#x pPC=%#x machine_code=%#010x\n",
-            fetchedCount, currentPC, physical_pc, machine_code);
+        "fetch[%u] vPC=%#x pPC=%#x machine_code=%s\n",
+        fetchedCount, currentPC, physical_pc, code_str.c_str());
 
-    currentPC += FetchSize;
+    currentPC += fetchSize;
     ++fetchedCount;
 
+    // 用完后
+    delete[] machine_code;
     if (fetchedCount >= fetchCount) {
         stop();
         exitSimLoop("Ucore finished fetching 10 machine-code words");

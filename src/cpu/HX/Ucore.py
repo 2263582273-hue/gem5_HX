@@ -14,5 +14,7 @@ class Ucore(BaseCPU, RiscvCPU):
     fetch_count = Param.Unsigned(
         10, "Number of 4-byte machine-code words to fetch before exiting"
     )
-
-    cacheLineSize = Param.Unsigned(32, "Ibuffer cache-line size in bytes")
+    #cacheLineSize是cache里的行宽度，fetchSize是指令宽度，两者的单位都是字节byte
+    #cacheLineSize应该是fetchSize的整数倍
+    cacheLineSize = Param.Unsigned(16, "Ibuffer cache-line size in bytes")
+    fetchSize = Param.Unsigned(16, "fetchsize in bytes")
