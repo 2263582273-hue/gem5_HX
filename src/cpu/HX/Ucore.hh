@@ -33,7 +33,7 @@ class Ucore : public BaseCPU, public Ticked
 
     SimpleThread *thread;
     DataPort dataPort;
-    Ibuffer ibuffer;
+    Ibuffer *ibuffer;
 
     Addr currentPC = 0;
     const unsigned fetchCount;
@@ -47,7 +47,7 @@ class Ucore : public BaseCPU, public Ticked
     Addr translateInstAddr(Addr vaddr);
 
   protected:
-    Port &getInstPort() override { return ibuffer.getPort(); }
+    Port &getInstPort() override { return ibuffer->getPort(); }
     Port &getDataPort() override { return dataPort; }
 
   public:
@@ -67,11 +67,16 @@ class Ucore : public BaseCPU, public Ticked
 
     Counter totalInsts() const override { return 0; }
     Counter totalOps() const override { return 0; }
-  
-    /*来自Ibuffer的输入*/
+
+  //Ucore的输入的输出信号
   public:
-    bool ins_vld;
-    Inst ins_data;
+    TimeBuffer<UcoreOut> outputBuffer;
+
+    const UcoreOut &
+    output(Cycles delay = Cycles(1)) const
+    {
+        return outputBuffer.read(curCycle(), delay);
+    }
 
 };
 

@@ -1,10 +1,8 @@
 #include "cpu/HX/Ucore.hh"
 
 #include <cstdint>
-#include <cstring>
 
 #include "base/logging.hh"
-#include "debug/Ucore.hh"
 #include "mem/request.hh"
 #include "sim/faults.hh"
 #include "sim/sim_exit.hh"
@@ -17,7 +15,7 @@ Ucore::Ucore(const UcoreParams &p)
       Ticked(*this, &baseStats.numCycles),
       thread(nullptr),
       dataPort(name() + ".dcache_port"),
-      ibuffer(*this, p.cacheLineSize),
+      ibuffer(p.ibuffer),
       fetchCount(p.fetch_count),
       ibufferLineSize(p.cacheLineSize),
       fetchSize(p.fetchSize),
@@ -27,6 +25,7 @@ Ucore::Ucore(const UcoreParams &p)
     fatal_if(numThreads != 1, "Ucore currently supports one thread only");
     fatal_if(p.workload.size() != 1, "Ucore requires exactly one workload");
     fatal_if(!p.mmu, "Ucore requires an MMU");
+    fatal_if(!ibuffer, "Ucore requires an Ibuffer");
     fatal_if(p.isa.size() != 1, "Ucore requires exactly one ISA object");
     fatal_if(p.decoder.size() != 1,
              "Ucore requires exactly one instruction decoder");
@@ -54,6 +53,7 @@ Ucore::startup()
     BaseCPU::startup();
     currentPC = thread->pcState().instAddr();
     inform("Ucore ELF entry PC = %#x", currentPC);
+    ibuffer->start();
     start();
 }
 
@@ -115,47 +115,25 @@ Ucore::translateInstAddr(Addr vaddr)
 void
 Ucore::evaluate()
 {
+    // Read Ibuffer's stable output from the previous cycle.
+    const IbufferOut &ibuffer_out = ibuffer->output();
 
-    // Translation is functional: it changes no timing and returns immediately.
-    const Addr physical_pc = translateInstAddr(currentPC);
-    const auto line = ibuffer.fetchIbuffer(physical_pc);
+    // pc_vld is always asserted; pc_data is Ucore's current PC.
+    auto &out = outputBuffer.write(curCycle());
+    out = UcoreOut{};
 
-    // A miss returns an invalid line. evaluate() will retry on the next cycle.
-    if (!line.valid) {
-        DPRINTF(Ucore,
-                "Ibuffer miss or line fill pending: vPC=%#x pPC=%#x\n",
-                currentPC, physical_pc);
-        return;
+    out.pc_vld = true;
+    out.pc_data = static_cast<PC>(currentPC);
+    
+    // Advance PC only when Ibuffer returned valid instruction data.
+    if (ibuffer_out.ins_vld) {
+        currentPC += 16;
+        ++fetchedCount;
     }
 
-    const Addr line_offset = physical_pc - line.lineAddr;
-    fatal_if(line_offset + fetchSize > ibufferLineSize,
-             "Ucore instruction crosses an Ibuffer cache line");
-
-    uint8_t *machine_code = new uint8_t[fetchSize];
-    std::memcpy(machine_code, line.inst + line_offset, fetchSize);
-
-    std::ostringstream code;
-    for (Addr i = 0; i < fetchSize; ++i) {
-        if (i != 0)
-            code << ' ';
-        code << std::hex << std::setw(2) << std::setfill('0')
-            << static_cast<unsigned>(machine_code[i]);
-    }
-
-    const std::string code_str = code.str();
-    DPRINTF(Ucore,
-        "fetch[%u] vPC=%#x pPC=%#x machine_code=%s\n",
-        fetchedCount, currentPC, physical_pc, code_str.c_str());
-
-    currentPC += fetchSize;
-    ++fetchedCount;
-
-    // 用完后
-    delete[] machine_code;
     if (fetchedCount >= fetchCount) {
         stop();
-        exitSimLoop("Ucore finished fetching 10 machine-code words");
+        exitSimLoop("Ucore finished fetching requested machine-code words");
     }
 }
 
@@ -165,6 +143,7 @@ Ucore::wakeup(ThreadID tid)
     fatal_if(tid != 0, "Ucore received invalid thread ID %u", tid);
     if (thread->status() == ThreadContext::Suspended)
         thread->activate();
+    ibuffer->start();
     start();
 }
 

@@ -1,37 +1,65 @@
 #ifndef __CPU_HX_MEM_IBUFFER_HH__
 #define __CPU_HX_MEM_IBUFFER_HH__
 
+#include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include "cpu/HX/data.hh"
 #include "base/types.hh"
 #include "mem/packet.hh"
 #include "mem/port.hh"
+#include "params/Ibuffer.hh"
+#include "sim/ticked_object.hh"
 
 namespace gem5
 {
 
 class Ucore;
 
-class Ibuffer
+class Ibuffer : public TickedObject
 {
+  /*Ibuffer的内部寄存器*/
   public:
+
+    //cache line 结构
     struct Ibuffercacheline
     {
         bool valid = false;
         Addr lineAddr = 0;
         uint8_t *inst = nullptr;
     };
+    //记录是否有已发射的miss
+    struct Oldmiss 
+    {
+      bool valid;
+      Addr lineAddr;
+    };
 
-    Ibuffer(Ucore &ucore, Addr cache_line_size);
+    
+    struct Reg
+    {
+        Ibuffercacheline line0;
+        Ibuffercacheline line1;
+        Oldmiss miss0;
+        Oldmiss miss1;
+    };
+
+    //寄存器实例化
+    TimeBuffer<Reg> reg;
+    TimeBuffer<IbufferOut> outputBuffer;
+  
+  //Ibuffer初始化
+    Ibuffer(const IbufferParams &params);
     ~Ibuffer();
 
     /** Try to read the cache line containing the physical address. */
     Ibuffercacheline fetchIbuffer(Addr paddr);
-
+    
     Port &getPort() { return ibufferPort; }
-
-  private:
+  
+  
+  private: 
     class IbufferPort : public RequestPort
     {
       private:
@@ -53,25 +81,25 @@ class Ibuffer
             ibuffer.recvReqRetry();
         }
     };
-
-    Ucore &ucore;
-    const Addr cacheLineSize;
     IbufferPort ibufferPort;
-
-    Ibuffercacheline line0;
-    Ibuffercacheline line1;
-
-    bool requestOutstanding = false;
+        bool requestOutstanding = false;
     PacketPtr retryPkt = nullptr;
     Addr outstandingLineAddr = 0;
-
     bool recvTimingResp(PacketPtr pkt);
     void recvReqRetry();
+    std::array<std::unique_ptr<uint8_t[]>, 2> lineStorage;
+  //Ibuffer内部配置
+    Ucore *ucore;
+    const Addr cacheLineSize;
 
-  //来自Ucore的输入
+  //Ibuffer核心逻辑 
+    void evaluate() override;
+
+
+  /**/
   public:
-    bool pc_vld;
     
+
 
 
 };
