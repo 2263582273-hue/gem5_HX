@@ -32,8 +32,8 @@ class Ibuffer : public TickedObject
     //记录是否有已发射的miss
     struct Oldmiss 
     {
-      bool valid;
-      Addr lineAddr;
+      bool valid = false;
+      Addr lineAddr = 0;
     };
 
     
@@ -49,12 +49,18 @@ class Ibuffer : public TickedObject
     TimeBuffer<Reg> reg;
     TimeBuffer<IbufferOut> outputBuffer;
   
-  //Ibuffer初始化
+  // Ibuffer initialization
     Ibuffer(const IbufferParams &params);
     ~Ibuffer();
 
     /** Try to read the cache line containing the physical address. */
     Ibuffercacheline fetchIbuffer(Addr paddr);
+    
+    const IbufferOut &
+    output(Cycles delay = Cycles(1)) const
+    {
+        return outputBuffer.read(curCycle(), delay);
+    }
     
     Port &getPort() { return ibufferPort; }
   
@@ -89,16 +95,15 @@ class Ibuffer : public TickedObject
     void recvReqRetry();
     std::array<std::unique_ptr<uint8_t[]>, 2> lineStorage;
   //Ibuffer内部配置
-    Ucore *ucore;
     const Addr cacheLineSize;
 
   //Ibuffer核心逻辑 
     void evaluate() override;
 
 
-  /**/
+  /*外部连接模块*/
   public:
-    
+    Ucore *ucore;
 
 
 

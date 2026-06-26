@@ -57,7 +57,7 @@ Ucore::startup()
 {
     BaseCPU::startup();
     currentPC = thread->pcState().instAddr();
-    inform("Ucore ELF entry PC = %#x", currentPC);
+    DPRINTF(Ucore, "ELF entry PC = %#x\n", currentPC);
     start();
 }
 
@@ -109,9 +109,7 @@ Ucore::evaluate()
     uint32_t machineCode = 0;
     std::memcpy(&machineCode, bytes, sizeof(machineCode));
 
-    inform("Ucore fetch[%u]: PC=%#x machine_code=%#010x",
-           fetchedCount, currentPC, machineCode);
-    DPRINTF(Ucore, "fetch[%u] PC=%#x machine_code=%#010x\n",
+DPRINTF(Ucore, "fetch[%u] PC=%#x machine_code=%#010x\n",
             fetchedCount, currentPC, machineCode);
 
     currentPC += FetchSize;

@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -46,6 +47,7 @@
 #include <utility>
 
 #include "base/logging.hh"
+#include "debug/TextInstObject.hh"
 
 namespace gem5
 {
@@ -59,6 +61,8 @@ namespace
 TextInstObjectFormat textInstObjectFormat;
 
 constexpr Addr DefaultLoadAddr = 0x10000;
+constexpr unsigned BytesPerLine = 16;
+constexpr unsigned HexCharsPerLine = BytesPerLine * 2;
 
 bool
 endsWith(const std::string &str, const std::string &suffix)
@@ -90,12 +94,37 @@ stripComment(const std::string &line)
     return pos == std::string::npos ? line : line.substr(0, pos);
 }
 
+std::string
+compactHex(const std::string &text)
+{
+    std::string token;
+    token.reserve(text.size());
+    for (char c : text) {
+        if (std::isspace(static_cast<unsigned char>(c)) || c == '_')
+            continue;
+        token.push_back(c);
+    }
+    return token;
+}
+
+uint8_t
+parseByte(const std::string &hex, const std::string &filename, int line_no)
+{
+    char *end = nullptr;
+    errno = 0;
+    const unsigned long value = std::strtoul(hex.c_str(), &end, 16);
+    fatal_if(end == hex.c_str() || *end != '\0' || errno == ERANGE ||
+                 value > UINT8_MAX,
+             "%s:%d: invalid byte value '%s'.", filename.c_str(), line_no,
+             hex.c_str());
+    return static_cast<uint8_t>(value);
+}
+
 uint64_t
 parseHex(const std::string &text, const std::string &filename, int line_no,
          uint64_t max)
 {
-    std::string token = text;
-    token.erase(std::remove(token.begin(), token.end(), '_'), token.end());
+    const std::string token = compactHex(text);
 
     const char *start = token.c_str();
     char *end = nullptr;
@@ -107,6 +136,20 @@ parseHex(const std::string &text, const std::string &filename, int line_no,
              text.c_str());
 
     return value;
+}
+
+void
+appendLineBytes(const std::string &text, const std::string &filename,
+                int line_no, std::vector<uint8_t> &bytes)
+{
+    const std::string token = compactHex(text);
+    fatal_if(token.size() != HexCharsPerLine,
+             "%s:%d: expected exactly %u hex chars (%u bytes), got %u.",
+             filename.c_str(), line_no, HexCharsPerLine, BytesPerLine,
+             static_cast<unsigned>(token.size()));
+
+    for (unsigned i = 0; i < HexCharsPerLine; i += 2)
+        bytes.push_back(parseByte(token.substr(i, 2), filename, line_no));
 }
 
 } // anonymous namespace
@@ -151,7 +194,7 @@ TextInstObjectFormat::load(ImageFileDataPtr data)
 
         if (text[0] == '@') {
             fatal_if(saw_load_addr || !bytes.empty(),
-                     "%s:%d: load address must appear before instructions.",
+                     "%s:%d: load address must appear before data lines.",
                      filename.c_str(), line_no);
             load_addr = parseHex(trim(text.substr(1)), filename, line_no,
                                  MaxAddr);
@@ -159,19 +202,15 @@ TextInstObjectFormat::load(ImageFileDataPtr data)
             continue;
         }
 
-        const uint32_t inst = parseHex(text, filename, line_no, UINT32_MAX);
-        bytes.push_back(inst & 0xff);
-        bytes.push_back((inst >> 8) & 0xff);
-        bytes.push_back((inst >> 16) & 0xff);
-        bytes.push_back((inst >> 24) & 0xff);
+        appendLineBytes(text, filename, line_no, bytes);
     }
 
-    fatal_if(bytes.empty(), "%s: no RISC-V instructions found.",
+    fatal_if(bytes.empty(), "%s: no 16-byte instruction lines found.",
              filename.c_str());
 
-    inform("Loaded %d RISC-V text instructions from %s at %#x",
-           static_cast<int>(bytes.size() / sizeof(uint32_t)),
-           filename.c_str(), load_addr);
+    DPRINTF(TextInstObject, "loaded %d 16-byte instruction lines from %s at %#x\n",
+            static_cast<int>(bytes.size() / BytesPerLine), filename.c_str(),
+            load_addr);
 
     return new TextInstObject(data, load_addr, std::move(bytes));
 }

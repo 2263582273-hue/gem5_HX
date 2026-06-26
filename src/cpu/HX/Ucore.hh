@@ -1,38 +1,23 @@
 #ifndef __CPU_HX_UCORE_HH__
 #define __CPU_HX_UCORE_HH__
 
+#include <cstdint>
+#include <string>
+
+#include "base/types.hh"
 #include "cpu/HX/MEM/Ibuffer.hh"
-#include "cpu/base.hh"
-#include "cpu/simple_thread.hh"
+#include "cpu/HX/data.hh"
 #include "mem/port.hh"
 #include "params/Ucore.hh"
 #include "sim/ticked_object.hh"
-#include <cstdint>
-#include "data.hh"
 
 namespace gem5
 {
 
-/** Fetch-only CPU: functional address translation plus timing Ibuffer access. */
-class Ucore : public BaseCPU, public Ticked
+/** Fetch-only ticked object. It drives PC values without BaseCPU state. */
+class Ucore : public TickedObject
 {
   private:
-    class DataPort : public RequestPort
-    {
-      public:
-        explicit DataPort(const std::string &name) : RequestPort(name) {}
-
-      protected:
-        bool recvTimingResp(PacketPtr pkt) override
-        {
-            delete pkt;
-            return true;
-        }
-        void recvReqRetry() override {}
-    };
-
-    SimpleThread *thread;
-    DataPort dataPort;
     Ibuffer *ibuffer;
 
     Addr currentPC = 0;
@@ -41,35 +26,20 @@ class Ucore : public BaseCPU, public Ticked
     const Addr fetchSize;
     unsigned fetchedCount = 0;
 
-    //线程数量
+    // Kept as a configuration parameter for later multi-thread work.
     const unsigned num_thread;
-    //地址翻译（暂时使用）
-    Addr translateInstAddr(Addr vaddr);
-
-  protected:
-    Port &getInstPort() override { return ibuffer->getPort(); }
-    Port &getDataPort() override { return dataPort; }
 
   public:
     explicit Ucore(const UcoreParams &p);
-    ~Ucore() override;
+    ~Ucore() override = default;
 
-    void init() override;
     void startup() override;
-    void regStats() override;
-    void serialize(CheckpointOut &cp) const override;
-    void unserialize(CheckpointIn &cp) override;
-    void serializeThread(CheckpointOut &cp, ThreadID tid) const override;
-    void unserializeThread(CheckpointIn &cp, ThreadID tid) override;
-
     void evaluate() override;
-    void wakeup(ThreadID tid) override;
 
-    Counter totalInsts() const override { return 0; }
-    Counter totalOps() const override { return 0; }
+    Port &getPort(const std::string &if_name,
+                  PortID idx = InvalidPortID) override;
 
-  //Ucore的输入的输出信号
-  public:
+    // Output signals from Ucore to Ibuffer.
     TimeBuffer<UcoreOut> outputBuffer;
 
     const UcoreOut &
@@ -77,7 +47,6 @@ class Ucore : public BaseCPU, public Ticked
     {
         return outputBuffer.read(curCycle(), delay);
     }
-
 };
 
 } // namespace gem5
