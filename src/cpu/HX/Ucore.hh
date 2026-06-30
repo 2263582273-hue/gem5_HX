@@ -14,11 +14,14 @@
 namespace gem5
 {
 
+class L0cache;
+
 /** Fetch-only ticked object. It drives PC values without BaseCPU state. */
 class Ucore : public TickedObject
 {
   private:
     Ibuffer *ibuffer;
+    L0cache *l0cache;
 
     Addr currentPC = 0;
     const unsigned fetchCount;
@@ -35,6 +38,8 @@ class Ucore : public TickedObject
 
     void startup() override;
     void evaluate() override;
+
+    L0cache *getL0cache() const { return l0cache; }
 
     Port &getPort(const std::string &if_name,
                   PortID idx = InvalidPortID) override;

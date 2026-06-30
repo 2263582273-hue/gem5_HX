@@ -56,7 +56,12 @@ system.mem_mode = "timing"
 system.mem_ranges = [AddrRange("512MiB")]
 system.membus = SystemXBar()
 
-system.ucore = Ucore(fetch_count=args.fetch_count, initial_pc=initial_pc)
+system.l0cache = L0cache(num_arbiter_ports=2)
+system.ucore = Ucore(
+    fetch_count=args.fetch_count,
+    initial_pc=initial_pc,
+    l0cache=system.l0cache,
+)
 # Ucore is no longer a BaseCPU. Its public port forwards to the Ibuffer port.
 system.ucore.port = system.membus.cpu_side_ports
 

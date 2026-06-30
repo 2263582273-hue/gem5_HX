@@ -1,0 +1,6 @@
+Import('*')
+
+SimObject('L0cache.py', sim_objects=['L0cache'])
+Source('L0cache.cc')
+
+DebugFlag('L0cache')

@@ -31,3 +31,4 @@ class Ucore(TickedObject):
     fetchSize = Param.Unsigned(16, "fetchsize in bytes")
     num_thread = Param.Unsigned(16, "Number of threads")
     ibuffer = Param.Ibuffer(Ibuffer(), "Instruction buffer")
+    l0cache = Param.L0cache("与 Ucore 连接的 L0cache")

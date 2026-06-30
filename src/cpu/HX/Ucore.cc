@@ -1,6 +1,7 @@
 #include "cpu/HX/Ucore.hh"
 
 #include "base/logging.hh"
+#include "cpu/HX/MEM/L0cache.hh"
 #include "debug/Ucore.hh"
 #include "sim/sim_exit.hh"
 
@@ -10,6 +11,7 @@ namespace gem5
 Ucore::Ucore(const UcoreParams &p)
     : TickedObject(p),
       ibuffer(p.ibuffer),
+      l0cache(p.l0cache),
       currentPC(p.initial_pc),
       fetchCount(p.fetch_count),
       ibufferLineSize(p.cacheLineSize),
@@ -17,6 +19,7 @@ Ucore::Ucore(const UcoreParams &p)
       num_thread(p.num_thread)
 {
     fatal_if(!ibuffer, "Ucore requires an Ibuffer");
+    fatal_if(!l0cache, "Ucore requires an L0cache");
     fatal_if(fetchCount == 0, "Ucore fetch_count must be greater than zero");
     fatal_if(fetchSize == 0, "Ucore fetchSize must be greater than zero");
     fatal_if(ibufferLineSize == 0,
@@ -24,6 +27,7 @@ Ucore::Ucore(const UcoreParams &p)
     fatal_if(ibufferLineSize % fetchSize != 0,
              "Ucore cacheLineSize must be a multiple of fetchSize");
     ibuffer->ucore = this;
+    l0cache->setUcore(this);
 }
 
 void
