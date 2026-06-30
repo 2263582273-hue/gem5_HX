@@ -59,7 +59,7 @@ Ucore::evaluate()
     out.pc_data = pc;
 
     if (ibuffer_out.ins_vld) {
-        DPRINTF(Ucore, "fetched instruction @ PC %#x: %s\n", pc,
+        DPRINTF(Ucore, "fetched instruction @ PC %#x: %s\n", ibuffer_out.pc_data,
                 ibuffer_out.ins_data.toString().c_str());
         out.pc_data = pc + fetchSize;
         ++fetchedCount;

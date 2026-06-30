@@ -56,9 +56,9 @@ system.mem_mode = "timing"
 system.mem_ranges = [AddrRange("512MiB")]
 system.membus = SystemXBar()
 
-system.cpu = Ucore(fetch_count=args.fetch_count, initial_pc=initial_pc)
+system.ucore = Ucore(fetch_count=args.fetch_count, initial_pc=initial_pc)
 # Ucore is no longer a BaseCPU. Its public port forwards to the Ibuffer port.
-system.cpu.port = system.membus.cpu_side_ports
+system.ucore.port = system.membus.cpu_side_ports
 
 system.mem_ctrl = MemCtrl()
 system.mem_ctrl.dram = DDR3_1600_8x8()

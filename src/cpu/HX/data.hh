@@ -35,31 +35,98 @@ namespace  gem5{
     };
     typedef uint32_t PC ;
 
+    // template <class T, std::size_t Depth = 2>
+    // class TimeBuffer
+    // {
+    //   private:
+    //     static_assert(Depth >= 2, "TimeBuffer depth must be at least 2");
+
+    //     std::array<T, Depth> slots{};
+
+    //   public:
+    //     const T &
+    //     read(Cycles cycle, Cycles delay = Cycles(1)) const
+    //     {
+    //         const uint64_t cycle_value = static_cast<uint64_t>(cycle);
+    //         const uint64_t delay_value = static_cast<uint64_t>(delay);
+    //         const uint64_t read_cycle =
+    //             cycle_value > delay_value ? cycle_value - delay_value : 0;
+    //         return slots[read_cycle % Depth];
+    //     }
+
+    //     T &
+    //     write(Cycles cycle)
+    //     {
+    //         return slots[static_cast<uint64_t>(cycle) % Depth];
+    //     }
+    // };
+
     template <class T, std::size_t Depth = 2>
-    class TimeBuffer
+class TimeBuffer
+{
+  private:
+    std::array<T, Depth> slots{};
+    std::array<uint64_t, Depth> writeCycles{};
+    std::array<bool, Depth> valid{};
+    std::size_t nextSlot = 0;
+    T initialValue{};
+
+    const T &
+    latest(uint64_t targetCycle) const
     {
-      private:
-        static_assert(Depth >= 2, "TimeBuffer depth must be at least 2");
+        const T *result = &initialValue;
+        uint64_t latestCycle = 0;
+        bool found = false;
 
-        std::array<T, Depth> slots{};
-
-      public:
-        const T &
-        read(Cycles cycle, Cycles delay = Cycles(1)) const
-        {
-            const uint64_t cycle_value = static_cast<uint64_t>(cycle);
-            const uint64_t delay_value = static_cast<uint64_t>(delay);
-            const uint64_t read_cycle =
-                cycle_value > delay_value ? cycle_value - delay_value : 0;
-            return slots[read_cycle % Depth];
+        for (std::size_t i = 0; i < Depth; ++i) {
+            if (valid[i] && writeCycles[i] <= targetCycle &&
+                (!found || writeCycles[i] > latestCycle)) {
+                result = &slots[i];
+                latestCycle = writeCycles[i];
+                found = true;
+            }
         }
 
-        T &
-        write(Cycles cycle)
-        {
-            return slots[static_cast<uint64_t>(cycle) % Depth];
+        return *result;
+    }
+
+  public:
+    const T &
+    read(Cycles cycle, Cycles delay = Cycles(1)) const
+    {
+        const uint64_t c = static_cast<uint64_t>(cycle);
+        const uint64_t d = static_cast<uint64_t>(delay);
+
+        if (c < d)
+            return initialValue;
+
+        return latest(c - d);
+    }
+
+    T &
+    write(Cycles cycle)
+    {
+        const uint64_t c = static_cast<uint64_t>(cycle);
+
+        // 同一周期多次调用 write()，返回同一个槽位。
+        for (std::size_t i = 0; i < Depth; ++i) {
+            if (valid[i] && writeCycles[i] == c)
+                return slots[i];
         }
-    };
+
+        // 新值默认继承之前的寄存器值。
+        T previous = c == 0 ? initialValue : latest(c - 1);
+
+        const std::size_t index = nextSlot;
+        nextSlot = (nextSlot + 1) % Depth;
+
+        slots[index] = previous;
+        writeCycles[index] = c;
+        valid[index] = true;
+        return slots[index];
+    }
+};
+
 
     struct UcoreOut
     {
@@ -73,6 +140,7 @@ namespace  gem5{
         //给Ucore的输出
         bool ins_vld = false;
         Inst ins_data;
+        PC pc_data = 0;
         //给L0buffer的输出
         bool L0_ovld[2];
         Addr L0_oaddr[2];

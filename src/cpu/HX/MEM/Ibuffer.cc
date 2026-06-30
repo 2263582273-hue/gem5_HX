@@ -21,7 +21,7 @@ Ibuffer::Ibuffer(const IbufferParams &params)
     //   ucore(dynamic_cast<Ucore *>(params.ucore)),
       cacheLineSize(params.cache_line_size)
 {
-    fatal_if(!ucore, "Ibuffer requires a Ucore parent");
+
     fatal_if(cacheLineSize == 0 || !isPowerOf2(cacheLineSize),
              "Ibuffer cache line size must be a non-zero power of two");
 }
@@ -51,11 +51,11 @@ Ibuffer::evaluate()
         output.ins_vld=0;
         return;
     }
-    //计算Pc所在行号和偏置 _n是now的意�?
+    //计算Pc所在行号和偏置 _n是now的意�?
     Addr line_n = input.pc_data/cacheLineSize;
     Addr offset_n = input.pc_data % cacheLineSize;
 
-    //预取的行 _p是prefetch的意�?
+    //预取的行 _p是prefetch的意�?
     Addr line_p = line_n + 1;
 
     //奇偶变换
@@ -126,6 +126,7 @@ Ibuffer::evaluate()
     if (output.ins_vld) {
         std::memcpy(output.ins_data.bytes.data(), cacheline_n.inst + offset_n,
                     Inst::Size);
+        output.pc_data = input.pc_data;
     DPRINTF(Ibuffer, "Inst is %s, pc is %#x, offset is %#x\n",
             output.ins_data.toString().c_str(), input.pc_data, offset_n);
     }
@@ -152,21 +153,21 @@ Ibuffer::evaluate()
     //     output.ins_vld=0;
     //     return;
     // }
-    // //计算Pc所在行号和偏置 _n是now的意�?
+    // //计算Pc所在行号和偏置 _n是now的意�?
     // Addr line_n = input.pc_data/cacheLineSize;
     // Addr offset_n = input.pc_data % cacheLineSize;
 
-    // //预取的行 _p是prefetch的意�?
+    // //预取的行 _p是prefetch的意�?
     // Addr line_p = line_n + 1;
 
     // //奇偶变换
-    //     // �?
+    //     // �?
     // bool is_odd = line_n & 1;
     // const Ibuffercacheline &cacheline_n = is_odd ? reg_read.line1 : reg_read.line0;
     // const Ibuffercacheline &cacheline_p = !is_odd ? reg_read.line1 : reg_read.line0;
     // const Oldmiss &miss_n = is_odd ? reg_read.miss1 : reg_read.miss0;
     // const Oldmiss &miss_p = !is_odd ? reg_read.miss1 : reg_read.miss0;
-    //     // �?
+    //     // �?
     // Oldmiss &miss_n_w = is_odd ? reg_write.miss1 : reg_write.miss0;
     // Oldmiss &miss_p_w = is_odd ? reg_write.miss0 : reg_write.miss1;
 
@@ -239,7 +240,7 @@ Ibuffer::evaluate()
     //     std::memcpy(output.ins_data.bytes.data(), reg_read.line1.inst + line_offset, Inst::Size);
     //     return;
     // } else {
-    //     /*发生miss的处�?/
+    //     /*发生miss的处�?/
     //     if (reg_read.miss
     // }
 
