@@ -32,7 +32,7 @@
  * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. hello
  */
 
 #include "cpu/minor/fetch1.hh"
@@ -45,7 +45,6 @@
 #include "base/cast.hh"
 #include "base/compiler.hh"
 #include "base/logging.hh"
-#include "base/statistics.hh"
 #include "base/trace.hh"
 #include "cpu/minor/pipeline.hh"
 #include "debug/Drain.hh"
@@ -91,7 +90,6 @@ Fetch1::Fetch1(const std::string &name_,
         lineSnap = cpu.cacheLineSize();
         DPRINTF(Fetch, "lineSnap set to cache line size of: %d\n",
             lineSnap);
-        
     }
 
     if (maxLineWidth == 0) {
@@ -126,6 +124,7 @@ Fetch1::getScheduledThread()
 {
     /* Select thread via policy. */
     std::vector<ThreadID> priority_list;
+
     switch (cpu.threadPolicy) {
       case enums::SingleThreaded:
         priority_list.push_back(0);

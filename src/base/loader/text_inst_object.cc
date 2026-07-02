@@ -47,7 +47,6 @@
 #include <utility>
 
 #include "base/logging.hh"
-#include "debug/TextInstObject.hh"
 
 namespace gem5
 {
@@ -208,9 +207,9 @@ TextInstObjectFormat::load(ImageFileDataPtr data)
     fatal_if(bytes.empty(), "%s: no 16-byte instruction lines found.",
              filename.c_str());
 
-    DPRINTF(TextInstObject, "loaded %d 16-byte instruction lines from %s at %#x\n",
-            static_cast<int>(bytes.size() / BytesPerLine), filename.c_str(),
-            load_addr);
+    inform("Loaded %d 16-byte instruction lines from %s at %#x",
+           static_cast<int>(bytes.size() / BytesPerLine), filename.c_str(),
+           load_addr);
 
     return new TextInstObject(data, load_addr, std::move(bytes));
 }

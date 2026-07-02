@@ -48,6 +48,7 @@ if initial_pc is None:
     initial_pc = get_txt_entry(inst_txt) if inst_txt else 0
 
 system = System()
+system.cache_line_size = 512
 system.clk_domain = SrcClockDomain()
 system.clk_domain.clock = "1GHz"
 system.clk_domain.voltage_domain = VoltageDomain()
@@ -56,7 +57,7 @@ system.mem_mode = "timing"
 system.mem_ranges = [AddrRange("512MiB")]
 system.membus = SystemXBar()
 
-system.l0cache = L0cache(num_arbiter_ports=2)
+system.l0cache = L0cache()
 system.ucore = Ucore(
     fetch_count=args.fetch_count,
     initial_pc=initial_pc,

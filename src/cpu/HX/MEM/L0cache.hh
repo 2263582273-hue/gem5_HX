@@ -1,16 +1,24 @@
 #ifndef __CPU_HX_MEM_L0CACHE_HH__
 #define __CPU_HX_MEM_L0CACHE_HH__
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
+#include <queue>
 #include <vector>
 
+#include "base/types.hh"
+#include "mem/cache/cache.hh"
 #include "params/L0cache.hh"
 #include "sim/ticked_object.hh"
+#include "mem/cache/tags/base.hh"
 
 namespace gem5
 {
 
 class Ucore;
+class CacheBlk;
+class MSHR;
 
 /** 使用循环轮转优先级，从有效输入端口中选择一个端口。 */
 class RoundRobinArbiter
@@ -37,9 +45,31 @@ class RoundRobinArbiter
     std::size_t nextPriority = 0;
 };
 
-
-class L0cache : public TickedObject
+struct Readrequest
 {
+  Addr addr; //完整地址，单位是byte
+  Addr lineaddr; // addr/linesize (addr>>9)
+  Addr lineoffset; // addr%linesize (addr%2^9)
+  Addr set; // lineaddr%setsize (lineaddr%32)
+  Addr tag; // lineaddr/setsize (lineaddr/32)
+  Addr bank; // lineoffset/bankwidth (lineoffset/2^7)
+  Addr bankoffset; // lineoffset%bankwidth (lineoffset%2^7)
+
+  bool isPre; //是否是预取的
+  uint8_t port; //属于哪一个端口
+};
+
+
+class L0cache : public Cache, public Ticked
+{
+  //
+  public:
+    static constexpr std::size_t NumReadRequestPorts = 8;
+    using ReadRequestQueue = std::queue<Readrequest>;
+
+    // Each queue represents one independent external read-request port.
+    std::array<ReadRequestQueue, NumReadRequestPorts> readRequestPorts;
+
   private:
     RoundRobinArbiter arbiter;
     Ucore *ucore = nullptr;
@@ -51,13 +81,29 @@ class L0cache : public TickedObject
     void startup() override;
     void evaluate() override;
 
+    using ClockedObject::regStats;
+    using ClockedObject::serialize;
+    using ClockedObject::unserialize;
+
+    void regStats() override;
+    void serialize(CheckpointOut &cp) const override;
+    void unserialize(CheckpointIn &cp) override;
+
     void setUcore(Ucore *ptr);
     Ucore *getUcore() const { return ucore; }
 
+    CacheBlk *findCacheLine(Addr addr, bool is_secure = false) const;
+    CacheBlk *fillCacheLine(PacketPtr fill_pkt, Tick ready_time);
+    MSHR *findMshr(Addr addr, bool is_secure = false) const;
+    MSHR *allocateMshr(PacketPtr pkt, Tick ready_time);
+    void writebackCacheLine(CacheBlk *blk, Tick ready_time);
+    
     int arbitrate(const std::vector<bool> &valid)
     {
         return arbiter.arbitrate(valid);
+        
     }
+    
 };
 
 } // namespace gem5

@@ -1,7 +1,10 @@
 Import('*')
 SimObject('Ucore.py', sim_objects=['Ucore', 'Ibuffer'])
+
 Source('Ucore.cc')
 Source('MEM/Ibuffer.cc')
 
+
 DebugFlag('Ucore')
 DebugFlag('Ibuffer')
+

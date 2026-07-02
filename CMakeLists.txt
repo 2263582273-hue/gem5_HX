@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 2.8.12)
 project(gem5)
 
 #Bring the headers, such as Student.h into the project
@@ -6,8 +6,8 @@ FIND_PACKAGE( Boost 1.6 )
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(src)
 include_directories(build/RISCV)
-include_directories(ext/softfloat)
 include_directories(ext/)
+
 #Can manually add the sources using the set command as follows:
 #set(SOURCES src/mainapp.cpp src/Student.cpp)
 
@@ -40,6 +40,6 @@ set(sources ${cpu_sources} ${arch_sources} ${rv_sources}
 
 add_definitions(-DTRACING_ON=true)
 
-add_compile_definitions(__CLION_CODING__)
+# add_definitions(-D__CLION_CODING__)
 add_executable(gem5 ${sources})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
